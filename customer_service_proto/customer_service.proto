@@ -1,0 +1,39 @@
+syntax = "proto3";
+
+option go_package = "./customer_service_proto";
+
+package customer_service_proto;
+
+service CustomerService {
+  rpc CheckCustomerDetailsValidity (CustomerDetails) returns (CustomerDetailsValid) {}
+  rpc CreateCustomer(CreateCustomerRequest) returns (CreateCustomerReply) {}
+  rpc CreateCustomerService(CreateCustomerServiceRequest) returns (CreateCustomerServiceReply) {}
+}
+
+// The request message containing the user's name.
+message CustomerDetails {
+  uint32 customerID = 1;
+  uint32 serviceID = 2;
+}
+
+// The response message containing the greetings
+message CustomerDetailsValid {
+  bool valid = 1;
+}
+
+message CreateCustomerRequest {
+  string customerName = 1;
+}
+
+message CreateCustomerReply {
+  uint32 customerID = 1; 
+} 
+
+message CreateCustomerServiceRequest {
+  string serviceName = 1;
+  uint32 customerID = 2;
+}
+
+message CreateCustomerServiceReply {
+  uint32 serviceID = 1;
+}
