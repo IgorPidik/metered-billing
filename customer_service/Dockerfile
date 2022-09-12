@@ -13,6 +13,7 @@ RUN go mod download
 RUN go install github.com/mitranim/gow@latest
 
 COPY . . 
+EXPOSE 50051
 
 # CMD ["gow run /src/app/main.go"]
 # CMD ["sh"]

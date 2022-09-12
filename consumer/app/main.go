@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/segmentio/kafka-go"
 )
 
@@ -23,12 +24,14 @@ type APIHit struct {
 
 type APIHitKafkaMessage struct {
 	APIHit
+	UUID      uuid.UUID `json:"uuid"`
 	Timestamp time.Time `json:"timestamp"`
 }
 
 func writeHitToKafka(hit *APIHit, writer *kafka.Writer) error {
 	message := &APIHitKafkaMessage{
 		APIHit:    *hit,
+		UUID:      uuid.New(),
 		Timestamp: time.Now(),
 	}
 
@@ -57,6 +60,7 @@ func apiUsed(w http.ResponseWriter, r *http.Request, writer *kafka.Writer) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
+
 	if writingErr := writeHitToKafka(hit, writer); writingErr != nil {
 		log.Fatal(writingErr)
 	}
