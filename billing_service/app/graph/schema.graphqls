@@ -1,0 +1,15 @@
+type APIHit {
+  uuid: ID!
+  customerId: Int!
+  serviceId: Int!
+}
+
+type Invoice {
+  uuid: ID!
+  customerId: Int!
+  hits: [APIHit!]!
+}
+
+type Query {
+  hits: [APIHit!]!
+}
