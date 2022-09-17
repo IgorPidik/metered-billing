@@ -56,12 +56,14 @@ type ComplexityRoot struct {
 	}
 
 	Query struct {
-		Hits func(childComplexity int) int
+		Hits     func(childComplexity int) int
+		Invoices func(childComplexity int) int
 	}
 }
 
 type QueryResolver interface {
 	Hits(ctx context.Context) ([]*model.APIHit, error)
+	Invoices(ctx context.Context) ([]*model.Invoice, error)
 }
 
 type executableSchema struct {
@@ -127,6 +129,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Query.Hits(childComplexity), true
+
+	case "Query.invoices":
+		if e.complexity.Query.Invoices == nil {
+			break
+		}
+
+		return e.complexity.Query.Invoices(childComplexity), true
 
 	}
 	return 0, false
@@ -194,6 +203,7 @@ type Invoice {
 
 type Query {
   hits: [APIHit!]!
+  invoices: [Invoice!]!
 }
 `, BuiltIn: false},
 }
@@ -504,7 +514,7 @@ func (ec *executionContext) _Invoice_hits(ctx context.Context, field graphql.Col
 	}
 	res := resTmp.([]*model.APIHit)
 	fc.Result = res
-	return ec.marshalNAPIHit2ᚕᚖbilling_serviceᚋgraphᚋmodelᚐAPIHitᚄ(ctx, field.Selections, res)
+	return ec.marshalNAPIHit2ᚕᚖbilling_serviceᚋappᚋgraphᚋmodelᚐAPIHitᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_Invoice_hits(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -556,7 +566,7 @@ func (ec *executionContext) _Query_hits(ctx context.Context, field graphql.Colle
 	}
 	res := resTmp.([]*model.APIHit)
 	fc.Result = res
-	return ec.marshalNAPIHit2ᚕᚖbilling_serviceᚋgraphᚋmodelᚐAPIHitᚄ(ctx, field.Selections, res)
+	return ec.marshalNAPIHit2ᚕᚖbilling_serviceᚋappᚋgraphᚋmodelᚐAPIHitᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_Query_hits(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -575,6 +585,58 @@ func (ec *executionContext) fieldContext_Query_hits(ctx context.Context, field g
 				return ec.fieldContext_APIHit_serviceId(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type APIHit", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_invoices(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_invoices(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().Invoices(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*model.Invoice)
+	fc.Result = res
+	return ec.marshalNInvoice2ᚕᚖbilling_serviceᚋappᚋgraphᚋmodelᚐInvoiceᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_invoices(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "uuid":
+				return ec.fieldContext_Invoice_uuid(ctx, field)
+			case "customerId":
+				return ec.fieldContext_Invoice_customerId(ctx, field)
+			case "hits":
+				return ec.fieldContext_Invoice_hits(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Invoice", field.Name)
 		},
 	}
 	return fc, nil
@@ -2616,6 +2678,29 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			out.Concurrently(i, func() graphql.Marshaler {
 				return rrm(innerCtx)
 			})
+		case "invoices":
+			field := field
+
+			innerFunc := func(ctx context.Context) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_invoices(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx, innerFunc)
+			}
+
+			out.Concurrently(i, func() graphql.Marshaler {
+				return rrm(innerCtx)
+			})
 		case "__type":
 
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
@@ -2957,7 +3042,7 @@ func (ec *executionContext) ___Type(ctx context.Context, sel ast.SelectionSet, o
 
 // region    ***************************** type.gotpl *****************************
 
-func (ec *executionContext) marshalNAPIHit2ᚕᚖbilling_serviceᚋgraphᚋmodelᚐAPIHitᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.APIHit) graphql.Marshaler {
+func (ec *executionContext) marshalNAPIHit2ᚕᚖbilling_serviceᚋappᚋgraphᚋmodelᚐAPIHitᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.APIHit) graphql.Marshaler {
 	ret := make(graphql.Array, len(v))
 	var wg sync.WaitGroup
 	isLen1 := len(v) == 1
@@ -2981,7 +3066,7 @@ func (ec *executionContext) marshalNAPIHit2ᚕᚖbilling_serviceᚋgraphᚋmodel
 			if !isLen1 {
 				defer wg.Done()
 			}
-			ret[i] = ec.marshalNAPIHit2ᚖbilling_serviceᚋgraphᚋmodelᚐAPIHit(ctx, sel, v[i])
+			ret[i] = ec.marshalNAPIHit2ᚖbilling_serviceᚋappᚋgraphᚋmodelᚐAPIHit(ctx, sel, v[i])
 		}
 		if isLen1 {
 			f(i)
@@ -3001,7 +3086,7 @@ func (ec *executionContext) marshalNAPIHit2ᚕᚖbilling_serviceᚋgraphᚋmodel
 	return ret
 }
 
-func (ec *executionContext) marshalNAPIHit2ᚖbilling_serviceᚋgraphᚋmodelᚐAPIHit(ctx context.Context, sel ast.SelectionSet, v *model.APIHit) graphql.Marshaler {
+func (ec *executionContext) marshalNAPIHit2ᚖbilling_serviceᚋappᚋgraphᚋmodelᚐAPIHit(ctx context.Context, sel ast.SelectionSet, v *model.APIHit) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
@@ -3054,6 +3139,60 @@ func (ec *executionContext) marshalNInt2int(ctx context.Context, sel ast.Selecti
 		}
 	}
 	return res
+}
+
+func (ec *executionContext) marshalNInvoice2ᚕᚖbilling_serviceᚋappᚋgraphᚋmodelᚐInvoiceᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.Invoice) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNInvoice2ᚖbilling_serviceᚋappᚋgraphᚋmodelᚐInvoice(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNInvoice2ᚖbilling_serviceᚋappᚋgraphᚋmodelᚐInvoice(ctx context.Context, sel ast.SelectionSet, v *model.Invoice) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._Invoice(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalNString2string(ctx context.Context, v interface{}) (string, error) {

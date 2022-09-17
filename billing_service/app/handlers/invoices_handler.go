@@ -12,7 +12,7 @@ type InvoicesHandler struct {
 
 func (i *InvoicesHandler) GetInvoices() ([]*models.Invoice, error) {
 	var invoices []*models.Invoice
-	if err := i.DB.Find(&invoices).Error; err != nil {
+	if err := i.DB.Preload("Hits").Find(&invoices).Error; err != nil {
 		return nil, err
 	}
 

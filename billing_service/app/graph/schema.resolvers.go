@@ -6,8 +6,25 @@ package graph
 import (
 	"billing_service/app/graph/generated"
 	"billing_service/app/graph/model"
+	db_models "billing_service/app/models"
 	"context"
 )
+
+func mapHitToResponse(hit *db_models.APIHit) *model.APIHit {
+	return &model.APIHit{
+		UUID:       hit.UUID.String(),
+		CustomerID: int(hit.CustomerID),
+		ServiceID:  int(hit.ServiceID),
+	}
+}
+
+func mapHitsToResponse(hits []*db_models.APIHit) []*model.APIHit {
+	var responseHits []*model.APIHit
+	for _, hit := range hits {
+		responseHits = append(responseHits, mapHitToResponse(hit))
+	}
+	return responseHits
+}
 
 // Hits is the resolver for the hits field.
 func (r *queryResolver) Hits(ctx context.Context) ([]*model.APIHit, error) {
@@ -16,15 +33,25 @@ func (r *queryResolver) Hits(ctx context.Context) ([]*model.APIHit, error) {
 		return nil, err
 	}
 
-	var responseHits []*model.APIHit
-	for _, hit := range hits {
-		responseHits = append(responseHits, &model.APIHit{
-			UUID:       hit.UUID.String(),
-			CustomerID: int(hit.CustomerID),
-			ServiceID:  int(hit.ServiceID),
+	return mapHitsToResponse(hits), nil
+}
+
+// Invoices is the resolver for the invoices field.
+func (r *queryResolver) Invoices(ctx context.Context) ([]*model.Invoice, error) {
+	invoices, err := r.InvoicesHandler.GetInvoices()
+	if err != nil {
+		return nil, err
+	}
+
+	var responseInvoices []*model.Invoice
+	for _, invoice := range invoices {
+		responseInvoices = append(responseInvoices, &model.Invoice{
+			UUID:       invoice.UUID.String(),
+			CustomerID: int(invoice.CustomerID),
+			Hits:       mapHitsToResponse(invoice.Hits),
 		})
 	}
-	return responseHits, nil
+	return responseInvoices, nil
 }
 
 // Query returns generated.QueryResolver implementation.

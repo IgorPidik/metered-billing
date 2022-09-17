@@ -12,4 +12,5 @@ type Invoice {
 
 type Query {
   hits: [APIHit!]!
+  invoices: [Invoice!]!
 }

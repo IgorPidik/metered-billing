@@ -8,7 +8,7 @@ import (
 type Invoice struct {
 	UUID       uuid.UUID `gorm:"type:uuid;primaryKey;unique"`
 	CustomerID uint
-	Hits       []APIHit
+	Hits       []*APIHit
 }
 
 func (i *Invoice) BeforeCreate(tx *gorm.DB) (err error) {
