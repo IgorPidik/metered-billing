@@ -3,6 +3,7 @@ package handlers
 import (
 	"billing_service/app/models"
 
+	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
@@ -17,4 +18,13 @@ func (i *InvoicesHandler) GetInvoices() ([]*models.Invoice, error) {
 	}
 
 	return invoices, nil
+}
+
+func (i *InvoicesHandler) GetInvoice(uuid uuid.UUID) (*models.Invoice, error) {
+	var invoice *models.Invoice
+	if dbErr := i.DB.Where("uuid = ?", uuid).Preload("Hits").Find(&invoice).Error; dbErr != nil {
+		return nil, dbErr
+	}
+
+	return invoice, nil
 }

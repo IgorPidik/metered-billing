@@ -13,4 +13,5 @@ type Invoice {
 type Query {
   hits: [APIHit!]!
   invoices: [Invoice!]!
+  invoice(invoiceUUID: ID!): Invoice
 }
