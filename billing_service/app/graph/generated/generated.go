@@ -46,6 +46,7 @@ type ComplexityRoot struct {
 	APIHit struct {
 		CustomerID func(childComplexity int) int
 		ServiceID  func(childComplexity int) int
+		Timestamp  func(childComplexity int) int
 		UUID       func(childComplexity int) int
 	}
 
@@ -56,16 +57,16 @@ type ComplexityRoot struct {
 	}
 
 	Query struct {
-		Hits     func(childComplexity int) int
-		Invoice  func(childComplexity int, uuid string) int
-		Invoices func(childComplexity int) int
+		Invoice             func(childComplexity int, invoiceUUID string) int
+		Invoices            func(childComplexity int) int
+		InvoicesForCustomer func(childComplexity int, customerID int) int
 	}
 }
 
 type QueryResolver interface {
-	Hits(ctx context.Context) ([]*model.APIHit, error)
 	Invoices(ctx context.Context) ([]*model.Invoice, error)
-	Invoice(ctx context.Context, uuid string) (*model.Invoice, error)
+	Invoice(ctx context.Context, invoiceUUID string) (*model.Invoice, error)
+	InvoicesForCustomer(ctx context.Context, customerID int) ([]*model.Invoice, error)
 }
 
 type executableSchema struct {
@@ -97,6 +98,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.APIHit.ServiceID(childComplexity), true
 
+	case "APIHit.timestamp":
+		if e.complexity.APIHit.Timestamp == nil {
+			break
+		}
+
+		return e.complexity.APIHit.Timestamp(childComplexity), true
+
 	case "APIHit.uuid":
 		if e.complexity.APIHit.UUID == nil {
 			break
@@ -125,13 +133,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Invoice.UUID(childComplexity), true
 
-	case "Query.hits":
-		if e.complexity.Query.Hits == nil {
-			break
-		}
-
-		return e.complexity.Query.Hits(childComplexity), true
-
 	case "Query.invoice":
 		if e.complexity.Query.Invoice == nil {
 			break
@@ -142,7 +143,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Query.Invoice(childComplexity, args["uuid"].(string)), true
+		return e.complexity.Query.Invoice(childComplexity, args["invoiceUUID"].(string)), true
 
 	case "Query.invoices":
 		if e.complexity.Query.Invoices == nil {
@@ -150,6 +151,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Query.Invoices(childComplexity), true
+
+	case "Query.invoicesForCustomer":
+		if e.complexity.Query.InvoicesForCustomer == nil {
+			break
+		}
+
+		args, err := ec.field_Query_invoicesForCustomer_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.InvoicesForCustomer(childComplexity, args["customerId"].(int)), true
 
 	}
 	return 0, false
@@ -207,6 +220,7 @@ var sources = []*ast.Source{
   uuid: ID!
   customerId: Int!
   serviceId: Int!
+  timestamp: String!
 }
 
 type Invoice {
@@ -216,9 +230,9 @@ type Invoice {
 }
 
 type Query {
-  hits: [APIHit!]!
   invoices: [Invoice!]!
-  invoice(uuid: ID!): Invoice
+  invoice(invoiceUUID: ID!): Invoice
+  invoicesForCustomer(customerId: Int!): [Invoice!]!
 }
 `, BuiltIn: false},
 }
@@ -247,14 +261,29 @@ func (ec *executionContext) field_Query_invoice_args(ctx context.Context, rawArg
 	var err error
 	args := map[string]interface{}{}
 	var arg0 string
-	if tmp, ok := rawArgs["uuid"]; ok {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("uuid"))
+	if tmp, ok := rawArgs["invoiceUUID"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("invoiceUUID"))
 		arg0, err = ec.unmarshalNID2string(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
 	}
-	args["uuid"] = arg0
+	args["invoiceUUID"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_invoicesForCustomer_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 int
+	if tmp, ok := rawArgs["customerId"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("customerId"))
+		arg0, err = ec.unmarshalNInt2int(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["customerId"] = arg0
 	return args, nil
 }
 
@@ -428,6 +457,50 @@ func (ec *executionContext) fieldContext_APIHit_serviceId(ctx context.Context, f
 	return fc, nil
 }
 
+func (ec *executionContext) _APIHit_timestamp(ctx context.Context, field graphql.CollectedField, obj *model.APIHit) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_APIHit_timestamp(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Timestamp, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_APIHit_timestamp(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "APIHit",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Invoice_uuid(ctx context.Context, field graphql.CollectedField, obj *model.Invoice) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Invoice_uuid(ctx, field)
 	if err != nil {
@@ -561,58 +634,8 @@ func (ec *executionContext) fieldContext_Invoice_hits(ctx context.Context, field
 				return ec.fieldContext_APIHit_customerId(ctx, field)
 			case "serviceId":
 				return ec.fieldContext_APIHit_serviceId(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type APIHit", field.Name)
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _Query_hits(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Query_hits(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().Hits(rctx)
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.([]*model.APIHit)
-	fc.Result = res
-	return ec.marshalNAPIHit2ᚕᚖbilling_serviceᚋappᚋgraphᚋmodelᚐAPIHitᚄ(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_Query_hits(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Query",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "uuid":
-				return ec.fieldContext_APIHit_uuid(ctx, field)
-			case "customerId":
-				return ec.fieldContext_APIHit_customerId(ctx, field)
-			case "serviceId":
-				return ec.fieldContext_APIHit_serviceId(ctx, field)
+			case "timestamp":
+				return ec.fieldContext_APIHit_timestamp(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type APIHit", field.Name)
 		},
@@ -686,7 +709,7 @@ func (ec *executionContext) _Query_invoice(ctx context.Context, field graphql.Co
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().Invoice(rctx, fc.Args["uuid"].(string))
+		return ec.resolvers.Query().Invoice(rctx, fc.Args["invoiceUUID"].(string))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -726,6 +749,69 @@ func (ec *executionContext) fieldContext_Query_invoice(ctx context.Context, fiel
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Query_invoice_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_invoicesForCustomer(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_invoicesForCustomer(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().InvoicesForCustomer(rctx, fc.Args["customerId"].(int))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*model.Invoice)
+	fc.Result = res
+	return ec.marshalNInvoice2ᚕᚖbilling_serviceᚋappᚋgraphᚋmodelᚐInvoiceᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_invoicesForCustomer(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "uuid":
+				return ec.fieldContext_Invoice_uuid(ctx, field)
+			case "customerId":
+				return ec.fieldContext_Invoice_customerId(ctx, field)
+			case "hits":
+				return ec.fieldContext_Invoice_hits(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Invoice", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_invoicesForCustomer_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return
 	}
@@ -2673,6 +2759,13 @@ func (ec *executionContext) _APIHit(ctx context.Context, sel ast.SelectionSet, o
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
+		case "timestamp":
+
+			out.Values[i] = ec._APIHit_timestamp(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -2745,29 +2838,6 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("Query")
-		case "hits":
-			field := field
-
-			innerFunc := func(ctx context.Context) (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._Query_hits(ctx, field)
-				if res == graphql.Null {
-					atomic.AddUint32(&invalids, 1)
-				}
-				return res
-			}
-
-			rrm := func(ctx context.Context) graphql.Marshaler {
-				return ec.OperationContext.RootResolverMiddleware(ctx, innerFunc)
-			}
-
-			out.Concurrently(i, func() graphql.Marshaler {
-				return rrm(innerCtx)
-			})
 		case "invoices":
 			field := field
 
@@ -2801,6 +2871,29 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_invoice(ctx, field)
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx, innerFunc)
+			}
+
+			out.Concurrently(i, func() graphql.Marshaler {
+				return rrm(innerCtx)
+			})
+		case "invoicesForCustomer":
+			field := field
+
+			innerFunc := func(ctx context.Context) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_invoicesForCustomer(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
 				return res
 			}
 

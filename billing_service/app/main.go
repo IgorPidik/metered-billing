@@ -11,14 +11,12 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"time"
 
-	// "time"
-
-	// "github.com/go-co-op/gocron"
 	"github.com/99designs/gqlgen/graphql/handler"
 	"github.com/99designs/gqlgen/graphql/playground"
+	"github.com/go-co-op/gocron"
 	"github.com/segmentio/kafka-go"
-	"gorm.io/gorm"
 )
 
 const (
@@ -26,11 +24,7 @@ const (
 	broker1Address = "kafka:9092"
 )
 
-func saveHit(db *gorm.DB, hit *models.APIHitKafka) error {
-	return db.Create(&models.APIHit{UUID: hit.UUID, CustomerID: hit.CustomerID, ServiceID: hit.ServiceID, Timestamp: hit.Timestamp}).Error
-}
-
-func processHits(db *gorm.DB, reader *kafka.Reader) {
+func processHits(hitsHandler *handlers.HitsHandler, reader *kafka.Reader) {
 	for {
 		msg, err := reader.ReadMessage(context.Background())
 		if err != nil {
@@ -42,7 +36,7 @@ func processHits(db *gorm.DB, reader *kafka.Reader) {
 			log.Fatal(jsonErr)
 		}
 
-		if saveErr := saveHit(db, hit); saveErr != nil {
+		if _, saveErr := hitsHandler.SaveHit(hit); saveErr != nil {
 			log.Fatal(saveErr)
 		}
 	}
@@ -55,29 +49,35 @@ func main() {
 	if dbErr != nil {
 		log.Fatal(dbErr)
 	}
-	// utils.CreateTestData(db)
-	// Setup reader to consume validated hits
-	// reader := kafka.NewReader(kafka.ReaderConfig{
-	// 	Brokers:     []string{broker1Address},
-	// 	Topic:       topic,
-	// 	StartOffset: kafka.FirstOffset,
-	// 	MinBytes:    5,
-	// 	MaxBytes:    1e6,
-	// 	MaxWait:     3 * time.Second,
-	// })
 
-	// defer reader.Close()
+	if sqlDB, sqlErr := db.DB(); sqlErr == nil {
+		defer sqlDB.Close()
+	}
 
-	// scheduler := gocron.NewScheduler(time.UTC)
-	// scheduler.Every(1).Days().Do(doInvoicing)
-	// scheduler.StartAsync()
-
-	invoicing.DoInvoicing(db)
-
-	// processHits(reader)
 	hitsHandler := &handlers.HitsHandler{DB: db}
 	invoicesHandler := &handlers.InvoicesHandler{DB: db}
 
+	// Setup reader to consume validated hits
+	reader := kafka.NewReader(kafka.ReaderConfig{
+		Brokers:     []string{broker1Address},
+		Topic:       topic,
+		StartOffset: kafka.FirstOffset,
+		MinBytes:    5,
+		MaxBytes:    1e6,
+		MaxWait:     3 * time.Second,
+	})
+
+	defer reader.Close()
+
+	// Start processing kafka hits
+	go processHits(hitsHandler, reader)
+
+	// Setup invoicing job
+	scheduler := gocron.NewScheduler(time.UTC)
+	scheduler.Every(1).Days().Do(invoicing.DoInvoicing, db)
+	scheduler.StartAsync()
+
+	// GraphQL server
 	port := "8081"
 	resolver := &graph.Resolver{
 		HitsHandler:     hitsHandler,
@@ -90,5 +90,4 @@ func main() {
 
 	log.Printf("connect to http://localhost:%s/ for GraphQL playground", port)
 	log.Fatal(http.ListenAndServe(":"+port, nil))
-
 }

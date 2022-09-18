@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"billing_service/app/models"
+	"errors"
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
@@ -22,9 +23,21 @@ func (i *InvoicesHandler) GetInvoices() ([]*models.Invoice, error) {
 
 func (i *InvoicesHandler) GetInvoice(uuid uuid.UUID) (*models.Invoice, error) {
 	var invoice *models.Invoice
-	if dbErr := i.DB.Where("uuid = ?", uuid).Preload("Hits").Find(&invoice).Error; dbErr != nil {
+	if dbErr := i.DB.Where("uuid = ?", uuid).Preload("Hits").First(&invoice).Error; dbErr != nil {
+		if errors.Is(dbErr, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
 		return nil, dbErr
 	}
 
 	return invoice, nil
+}
+
+func (i *InvoicesHandler) GetInvoicesForCustomerId(id uint) ([]*models.Invoice, error) {
+	var invoices []*models.Invoice
+	if dbErr := i.DB.Where("customer_id = ?", id).Preload("Hits").Find(&invoices).Error; dbErr != nil {
+		return nil, dbErr
+	}
+
+	return invoices, nil
 }

@@ -6,6 +6,7 @@ type APIHit struct {
 	UUID       string `json:"uuid"`
 	CustomerID int    `json:"customerId"`
 	ServiceID  int    `json:"serviceId"`
+	Timestamp  string `json:"timestamp"`
 }
 
 type Invoice struct {
