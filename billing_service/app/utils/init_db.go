@@ -18,7 +18,6 @@ func InitDB() (*gorm.DB, error) {
 
 	db.AutoMigrate(&models.APIHit{})
 	db.AutoMigrate(&models.Invoice{})
-	// log.Println(e)
 
 	return db, nil
 }

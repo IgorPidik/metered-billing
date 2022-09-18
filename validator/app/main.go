@@ -78,10 +78,12 @@ func main() {
 		Brokers:     []string{broker1Address},
 		Topic:       readerTopic,
 		StartOffset: kafka.FirstOffset,
+		GroupID:     "validator_group",
 		MinBytes:    5,
 		MaxBytes:    1e6,
 		MaxWait:     3 * time.Second,
 	})
+
 	defer reader.Close()
 
 	// Setup writer to forward validated hits

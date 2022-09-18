@@ -16,6 +16,7 @@ import (
 	"github.com/99designs/gqlgen/graphql/handler"
 	"github.com/99designs/gqlgen/graphql/playground"
 	"github.com/go-co-op/gocron"
+	"github.com/mattn/go-sqlite3"
 	"github.com/segmentio/kafka-go"
 )
 
@@ -37,6 +38,10 @@ func processHits(hitsHandler *handlers.HitsHandler, reader *kafka.Reader) {
 		}
 
 		if _, saveErr := hitsHandler.SaveHit(hit); saveErr != nil {
+			// skip over duplicated hits
+			if err, ok := saveErr.(sqlite3.Error); ok && err.ExtendedCode == sqlite3.ErrConstraintPrimaryKey {
+				continue
+			}
 			log.Fatal(saveErr)
 		}
 	}
@@ -61,6 +66,7 @@ func main() {
 	reader := kafka.NewReader(kafka.ReaderConfig{
 		Brokers:     []string{broker1Address},
 		Topic:       topic,
+		GroupID:     "billing_service_group",
 		StartOffset: kafka.FirstOffset,
 		MinBytes:    5,
 		MaxBytes:    1e6,
