@@ -1,2 +1,4 @@
-kafka_data/
-zookeeper/
+kafka_data/*
+!kafka_data/.keep
+zookeeper/*
+!zookeeper/.keep
